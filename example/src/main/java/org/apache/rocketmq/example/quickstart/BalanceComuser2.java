@@ -14,7 +14,7 @@ public class BalanceComuser2 {
         // 实例化消息生产者,指定组名
         DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("mark");
         // 指定Namesrv地址信息.
-        consumer.setNamesrvAddr("106.55.246.66:9876");
+        consumer.setNamesrvAddr("localhost:9876");
         // 订阅Topic
         consumer.setMaxReconsumeTimes(1);
         consumer.subscribe("TopicTest", "*");

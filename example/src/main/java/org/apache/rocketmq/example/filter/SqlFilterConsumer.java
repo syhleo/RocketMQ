@@ -25,7 +25,7 @@ import org.apache.rocketmq.client.consumer.listener.ConsumeConcurrentlyStatus;
 import org.apache.rocketmq.client.consumer.listener.MessageListenerConcurrently;
 import org.apache.rocketmq.common.message.MessageExt;
 /**
- * @author 【享学课堂】 King老师
+ *
  * sql过滤-消费者
  */
 public class SqlFilterConsumer {

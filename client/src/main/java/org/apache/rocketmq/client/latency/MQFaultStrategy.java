@@ -62,7 +62,8 @@ public class MQFaultStrategy {
         if (this.sendLatencyFaultEnable) {
             try {
                 //todo 遍历队列，判断该Broker是否可用(),删除一段时间内不可用的Broker
-                int index = tpInfo.getSendWhichQueue().getAndIncrement();
+                // 这里可以看到，Producer选择MessageQueue的方法，就是index自增，然后取模。并且只有这有一种方法
+                int index = tpInfo.getSendWhichQueue().getAndIncrement(); //基于线程上下文的计数递增，用于轮询目的
                 //对消息队列轮询获取一个队列
                 for (int i = 0; i < tpInfo.getMessageQueueList().size(); i++) {
                     //基于index和队列数量取余，确定位置
@@ -73,7 +74,7 @@ public class MQFaultStrategy {
                     if (latencyFaultTolerance.isAvailable(mq.getBrokerName()))
                         return mq;
                 }
-                //todo 如果预测的所有broker都不可用，则随机选择一个broker,随机选择该Broker下一个队列进行发送
+                //todo 如果预测的所有broker都不可用，则随机选择一个broker,随机选择该Broker下一个队列进行发送 [因为要发送总得取一个messagequeue]
                 final String notBestBroker = latencyFaultTolerance.pickOneAtLeast();
                 //获得Broker的写队列集合
                 int writeQueueNums = tpInfo.getQueueIdByBroker(notBestBroker);
@@ -91,7 +92,7 @@ public class MQFaultStrategy {
             } catch (Exception e) {
                 log.error("Error occurred when selecting message queue", e);
             }
-
+            //  兜底选择 轮询
             return tpInfo.selectOneMessageQueue();
         }
         //todo 默认走这里

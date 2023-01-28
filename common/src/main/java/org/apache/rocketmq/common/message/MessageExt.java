@@ -43,6 +43,9 @@ public class MessageExt extends Message {
     private String msgId;
     private long commitLogOffset;
     private int bodyCRC;
+    /**
+     * 代表消息重试的次数
+     */
     private int reconsumeTimes;
 
     private long preparedTransactionOffset;

@@ -155,11 +155,13 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Minimum consumer thread number
+     * 消费线程池最小线程数(最小消费线程数) 默认都是20
      */
     private int consumeThreadMin = 20;
 
     /**
      * Max consumer thread number
+     * 消费线程池最大线程数
      */
     private int consumeThreadMax = 20;
 
@@ -216,12 +218,16 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
     private long pullInterval = 0;
 
     /**
+     * https://blog.csdn.net/zylzzu/article/details/127222357
      * Batch consumption size
+     * 批量消费，一次消费多少条消息
+     * 消费线程每次消费的最大消息的数量，即：consumeMessageBatchMaxSize
      */
     private int consumeMessageBatchMaxSize = 1;
 
     /**
      * Batch pull size
+     * 拉取线程每次从broker拉取的消息量（pullBatchSize）
      */
     private int pullBatchSize = 32;
 

@@ -342,17 +342,27 @@ public class CommitLog {
 
                 // Timing message processing
                 {
+                    // 获取用户设置的消息延迟级别
                     String t = propertiesMap.get(MessageConst.PROPERTY_DELAY_TIME_LEVEL);
+                    // https://blog.csdn.net/weixin_37689658/article/details/122110461
+                    // 这里基本都会成立，因为当发送延迟消息的时候，会先写入到commitlog中，并且会把消息的topic改成SCHEDULE_TOPIC_XXXX
                     if (TopicValidator.RMQ_SYS_SCHEDULE_TOPIC.equals(topic) && t != null) {
                         int delayLevel = Integer.parseInt(t);
-
+                        // 超过最大的话，重置消息延迟级别
                         if (delayLevel > this.defaultMessageStore.getScheduleMessageService().getMaxDelayLevel()) {
                             delayLevel = this.defaultMessageStore.getScheduleMessageService().getMaxDelayLevel();
                         }
 
                         if (delayLevel > 0) {
+                            // 根据延迟级别计算出消息延迟结束时间，也就是说对于延迟消息来说，在延迟时间还没结束之前，
+                            // ConsumeQueueData中的tagCode记录的是延时结束时间
                             tagsCode = this.defaultMessageStore.getScheduleMessageService().computeDeliverTimestamp(delayLevel,
                                 storeTimestamp);
+                            /**
+                             * gdtodo:
+                             * 所以可以看到对于延迟消息来说，
+                             * 在延迟队列对应的consumequeue中存储的条目数据其中tagCode这一块内容存储的并不是该消息的tagCode，而是该消息的延迟结束时间
+                             */
                         }
                     }
                 }
@@ -576,6 +586,7 @@ public class CommitLog {
         final int tranType = MessageSysFlag.getTransactionValue(msg.getSysFlag());
         if (tranType == MessageSysFlag.TRANSACTION_NOT_TYPE
                 || tranType == MessageSysFlag.TRANSACTION_COMMIT_TYPE) {
+            // GDTODO 延迟消息的实现方式，就是偷偷修改一下msg的topic和queueID，改为系统默认创建的延迟队列。
             // Delay Delivery
             if (msg.getDelayTimeLevel() > 0) {
                 if (msg.getDelayTimeLevel() > this.defaultMessageStore.getScheduleMessageService().getMaxDelayLevel()) {
@@ -808,16 +819,29 @@ public class CommitLog {
         final int tranType = MessageSysFlag.getTransactionValue(msg.getSysFlag());
         if (tranType == MessageSysFlag.TRANSACTION_NOT_TYPE
             || tranType == MessageSysFlag.TRANSACTION_COMMIT_TYPE) {
-            // Delay Delivery
+            // gdtodo: Delay Delivery
+            // GDTODO 延迟消息的实现方式，就是偷偷修改一下msg的topic和queueID，改为系统默认创建的延迟队列。
             if (msg.getDelayTimeLevel() > 0) {
+                /**
+                 * 存储的时候会有个逻辑判断，delayLevel大于0的情况下会将此消息的topic和queueID进行一次转换，将此消息的newTopic，queueIdInt存入到属性中(real_topic,real_qid)，
+                 * 新的topic为 SCHEDULE_TOPIC_XXXX,新的queueId为 根据delayLevel的等级去本地delayLevelMap中找到对应的队列，
+                 * 实际上这里的步骤就是延迟消息的实现。到时候会有ScheduleMessageService去做后续的逻辑处理
+                 * 如果是消息重试导致的消息，那此时Msg消息的结构为：
+                 * topic:SCHEDULE_TOPIC_XXXX
+                 * queueId: delayLevel - 1（延迟级别-1）
+                 * msg的properties中存了以下信息：
+                 * "REAL_TOPIC"：%RETRY%+消费组名称  比如：%RETRY%test_1201_mac
+                 * "REAL_QID": msg.getQueueId()
+                 * "RETRY_TOPIC": 原始消息的实际topic 比如：TopicTestMQS
+                 */
                 if (msg.getDelayTimeLevel() > this.defaultMessageStore.getScheduleMessageService().getMaxDelayLevel()) {
                     msg.setDelayTimeLevel(this.defaultMessageStore.getScheduleMessageService().getMaxDelayLevel());
                 }
-
+                // topic：SCHEDULE_TOPIC_XXXX
                 topic = TopicValidator.RMQ_SYS_SCHEDULE_TOPIC;
                 queueId = ScheduleMessageService.delayLevel2QueueId(msg.getDelayTimeLevel());
 
-                // Backup real topic, queueId
+                // Backup real topic, queueId 即备份真正的topic和queueId（对应延迟消息来说，需要备份一下）
                 MessageAccessor.putProperty(msg, MessageConst.PROPERTY_REAL_TOPIC, msg.getTopic());
                 MessageAccessor.putProperty(msg, MessageConst.PROPERTY_REAL_QUEUE_ID, String.valueOf(msg.getQueueId()));
                 msg.setPropertiesString(MessageDecoder.messageProperties2String(msg.getProperties()));

@@ -83,13 +83,27 @@ public class RebalancePushImpl extends RebalanceImpl {
 
     @Override
     public boolean removeUnnecessaryMessageQueue(MessageQueue mq, ProcessQueue pq) {
+        // 这个方法会先处理 保存队列的 offset 让其他消费者 获取offset开始消费，重新被其他消费者加载
         this.defaultMQPushConsumerImpl.getOffsetStore().persist(mq);
         this.defaultMQPushConsumerImpl.getOffsetStore().removeOffset(mq);
         if (this.defaultMQPushConsumerImpl.isConsumeOrderly()
             && MessageModel.CLUSTERING.equals(this.defaultMQPushConsumerImpl.messageModel())) {
+            // 集群模式下，顺序消费 会执行该逻辑 顺序消费&集群模式，解锁对该队列的锁定
+            /**
+             * 获取消息队列消费锁，避免和消息队列消费冲突。如果获取锁失败，
+             * 则移除消息队列失败，等待下次重新分配消费队列时，再进行移除。
+             * 如果未获得锁而进行移除，则可能出现另外的 Consumer 和当前 Consumer 同时消费该消息队列，导致消息无法严格顺序消费。--这个更好理解
+             *
+             *
+             * 如果没有这把锁，假设该消息队列因为负载均衡而被分配给其他客户端B，但是由于客户端A正在对于拉取的一批消费消息进行消费，
+             * 还没有提交消费点位，如果此时客户端A能够直接请求broker对该messageQueue解锁，这将导致客户端B获取该messageQueue的分布式锁，
+             * 进而消费消息，而这些没有commit的消息将会发送重复消费。
+             * 所以说这把锁的作用，就是防止在消费消息的过程中，该消息队列因为发生负载均衡而被分配给其他客户端，进而导致的两个客户端重复消费消息的行为。
+             */
             try {
                 if (pq.getLockConsume().tryLock(1000, TimeUnit.MILLISECONDS)) {
                     try {
+                        // 释放锁 “broker端的 队列锁”
                         return this.unlockDelay(mq, pq);
                     } finally {
                         pq.getLockConsume().unlock();
@@ -111,7 +125,7 @@ public class RebalancePushImpl extends RebalanceImpl {
     }
 
     private boolean unlockDelay(final MessageQueue mq, final ProcessQueue pq) {
-
+        // 如果消息处理队列存在剩余消息，则延迟解锁 Broker 消息队列锁。
         if (pq.hasTempMessage()) {
             log.info("[{}]unlockDelay, begin {} ", mq.hashCode(), mq);
             this.defaultMQPushConsumerImpl.getmQClientFactory().getScheduledExecutorService().schedule(new Runnable() {

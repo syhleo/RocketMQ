@@ -22,7 +22,7 @@ import java.util.List;
 import org.apache.rocketmq.client.producer.DefaultMQProducer;
 import org.apache.rocketmq.common.message.Message;
 /**
- * @author 【享学课堂】 King老师
+ *
  * 批量消息-生产者  list不要超过4m
  */
 public class BatchProducer {

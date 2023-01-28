@@ -10,7 +10,7 @@ import org.apache.rocketmq.common.protocol.heartbeat.MessageModel;
 import java.util.List;
 
 /**
- * @author 【享学课堂】 King老师
+ *
  * 事务消息-消费者 B
  */
 public class TranscationComuser {

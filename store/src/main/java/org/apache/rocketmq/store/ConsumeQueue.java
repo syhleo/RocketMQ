@@ -582,6 +582,7 @@ public class ConsumeQueue {
 
     /**
      * Check {@code tagsCode} is address of extend file or tags code.
+     * https://www.jianshu.com/p/cdecdca0d0bd
      */
     public boolean isExtAddr(long tagsCode) {
         return ConsumeQueueExt.isExtAddr(tagsCode);

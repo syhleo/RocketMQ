@@ -110,7 +110,7 @@ public class NamesrvStartup {
         }
         //将启动参数填充到namesrvConfig,nettyServerConfig
         MixAll.properties2Object(ServerUtil.commandLine2Properties(commandLine), namesrvConfig);
-
+        // ROCKETMQ_HOME环境变量检测
         if (null == namesrvConfig.getRocketmqHome()) {
             System.out.printf("Please set the %s variable in your environment to match the location of the RocketMQ installation%n", MixAll.ROCKETMQ_HOME_ENV);
             System.exit(-2);

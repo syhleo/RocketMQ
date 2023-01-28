@@ -7,7 +7,7 @@ import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.remoting.common.RemotingHelper;
 
 /**
- * @author 【享学课堂】 King老师
+ *
  * 消息生产的高可用机制
  */
 public class HAProducer {

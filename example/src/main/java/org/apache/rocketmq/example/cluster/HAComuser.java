@@ -15,7 +15,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
- * @author 【享学课堂】 King老师
+ *
  * 消息消费时的细节
  */
 public class HAComuser {

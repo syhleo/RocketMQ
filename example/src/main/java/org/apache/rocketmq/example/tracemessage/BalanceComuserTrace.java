@@ -9,7 +9,7 @@ import org.apache.rocketmq.common.protocol.heartbeat.MessageModel;
 
 import java.util.List;
 /**
- * @author 【享学课堂】 King老师
+ *
  * 打印消息轨迹信息
  */
 public class BalanceComuserTrace {

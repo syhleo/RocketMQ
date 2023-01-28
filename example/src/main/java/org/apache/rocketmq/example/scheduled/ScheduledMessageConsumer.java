@@ -8,17 +8,17 @@ import org.apache.rocketmq.common.message.MessageExt;
 
 import java.util.List;
 /**
- * @author 【享学课堂】 King老师
+ *
  * 延时消息-消费者
  */
 public class ScheduledMessageConsumer {
     public static void main(String[] args) throws Exception {
         // 实例化消费者
-        DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("ScheduledConsumer");
+        DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("ScheduledConsumerA");
         // 指定Namesrv地址信息.
-        consumer.setNamesrvAddr("106.55.246.66:9876");
+        consumer.setNamesrvAddr("localhost:9876");
         // 订阅Topics
-        consumer.subscribe("ScheduledTopic", "*");
+        consumer.subscribe("ScheduledTopicA", "*");
         // 注册消息监听者
         consumer.registerMessageListener(new MessageListenerConcurrently() {
             @Override

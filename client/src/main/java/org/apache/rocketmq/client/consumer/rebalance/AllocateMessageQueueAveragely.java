@@ -29,6 +29,14 @@ import org.apache.rocketmq.common.message.MessageQueue;
 public class AllocateMessageQueueAveragely implements AllocateMessageQueueStrategy {
     private final InternalLogger log = ClientLogger.getLog();
 
+    /**
+     *
+     * @param consumerGroup current consumer group  当前消费者组   比如：test_1125_mac
+     * @param currentCID current consumer id                      比如：172.16.15.117@4330
+     * @param mqAll message queue set in current topic    topic主题中的所有MessageQueue集合
+     * @param cidAll consumer set in current consumer group  当前消费组的所有消费者cidAll
+     * @return
+     */
     @Override
     public List<MessageQueue> allocate(String consumerGroup, String currentCID, List<MessageQueue> mqAll,
         List<String> cidAll) {
@@ -51,8 +59,17 @@ public class AllocateMessageQueueAveragely implements AllocateMessageQueueStrate
             return result;
         }
 
+        // gdtodo: 计算当前消费者在消费者集合(List<String> cidAll)中下标的位置(index)
         int index = cidAll.indexOf(currentCID);
+        // 计算当前消息队列(Message Queue)中的消息是否能被消费者集合(cidAll)平均消费掉
         int mod = mqAll.size() % cidAll.size();
+        /**
+         * averageSize:计算当前消费者消费的平均数量
+         * mqAll.size() <= cidAll.size() ? 1 如果消息队列MessageQueue的数量 <= 消费者集合(cidAll)的数量, 当前消费者消耗的消息数量为1
+         *
+         * mod > 0 && index < mod ? mqAll.size() / cidAll.size() + 1 : mqAll.size() / cidAll.size() 如果消息不能被消费者平均消费掉, 且当前消费者在消费者集合中的下标(index) < 平均消费后的余数mod ,
+         * 则当前消费者消费的数量为 mqAll.size() / cidAll.size() + 1 , 否则是 mqAll.size() / cidAll.size()
+         */
         int averageSize =
             mqAll.size() <= cidAll.size() ? 1 : (mod > 0 && index < mod ? mqAll.size() / cidAll.size()
                 + 1 : mqAll.size() / cidAll.size());
@@ -62,6 +79,13 @@ public class AllocateMessageQueueAveragely implements AllocateMessageQueueStrate
             result.add(mqAll.get((startIndex + i) % mqAll.size()));
         }
         return result;
+
+        /**
+         * 可以参考https://blog.csdn.net/chao821/article/details/113777321
+         * 思路：（1）对比 消息队列MessageQueue的数量 <= 消费者集合(cidAll)的数量
+         *       (2) 对比 当前消费者在消费者集合中的下标 < 平均消费后的余数mod
+         */
+
     }
 
     @Override

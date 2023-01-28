@@ -214,10 +214,14 @@ public class MQClientAPIImpl {
 
     public String fetchNameServerAddr() {
         try {
+            /**
+             * 先利用GET请求获取名称服务地址，若是获取到了，则判断是否需要更新名称服务列表以及原来的nameSrvAddr
+             */
             String addrs = this.topAddressing.fetchNSAddr();
             if (addrs != null) {
                 if (!addrs.equals(this.nameSrvAddr)) {
                     log.info("name server address changed, old=" + this.nameSrvAddr + ", new=" + addrs);
+                    // 更新原来的nameSrvAddr
                     this.updateNameServerAddressList(addrs);
                     this.nameSrvAddr = addrs;
                     return nameSrvAddr;
@@ -711,7 +715,7 @@ public class MQClientAPIImpl {
         final CommunicationMode communicationMode,
         final PullCallback pullCallback
     ) throws RemotingException, MQBrokerException, InterruptedException {
-        //todo 拉取Queue的消息
+        //todo 拉取Queue的消息  RequestCode.PULL_MESSAGE
         RemotingCommand request = RemotingCommand.createRequestCommand(RequestCode.PULL_MESSAGE, requestHeader);
 
         switch (communicationMode) {
@@ -1101,15 +1105,21 @@ public class MQClientAPIImpl {
         final int maxConsumeRetryTimes
     ) throws RemotingException, MQBrokerException, InterruptedException {
         ConsumerSendMsgBackRequestHeader requestHeader = new ConsumerSendMsgBackRequestHeader();
+        // 和普通的发送消息的RequestCode不一样，broker处理的方法也不一样
         RemotingCommand request = RemotingCommand.createRequestCommand(RequestCode.CONSUMER_SEND_MSG_BACK, requestHeader);
 
         requestHeader.setGroup(consumerGroup);
+        // 因为重试的消息被broker拿到后会修改topic，所以这里设置原始的topic
         requestHeader.setOriginTopic(msg.getTopic());
+        // broker会根据msg的commitLogOffset查询原始的消息
         requestHeader.setOffset(msg.getCommitLogOffset());
+        // 用户可以设置延时等级，默认是0，不延时(但是broker端会有逻辑：如果为0会加3)
         requestHeader.setDelayLevel(delayLevel);
+        // 设置最初的msgId
         requestHeader.setOriginMsgId(msg.getMsgId());
+        // 设置最多被重试的次数，默认是16
         requestHeader.setMaxReconsumeTimes(maxConsumeRetryTimes);
-
+        // brokerVIPChannel ？？
         RemotingCommand response = this.remotingClient.invokeSync(MixAll.brokerVIPChannel(this.clientConfig.isVipChannelEnabled(), addr),
             request, timeoutMillis);
         assert response != null;

@@ -61,6 +61,24 @@ public class ClientConfig {
     private boolean useTLS = TlsSystemConfig.tlsEnable;
 
     private LanguageCode language = LanguageCode.JAVA;
+
+    /**
+     * ClientConfig的buildMQClientId会根据clientIP、instanceName、unitName来构建；
+     * clientIP默认值为RemotingUtil.getLocalAddress()；
+     * instanceName默认值为System.getProperty("rocketmq.client.name", "DEFAULT")；
+     * ClientConfig还提供了一个changeInstanceNameToPID方法，在instanceName值为默认值的时候，将其改为UtilAll.getPid()；
+     * unitName默认为空
+     *
+     * 如果unitName为null，则clientId为ip@pid，否则为ip@pid@unitName，----就是这个
+     * 所以说当一个jvm进程中有多个DefaultMQProducerImpl实例时，若每个实例都设置了不同的unitName，则会出现多个clientId，对应多个MQClientInstance；
+     * clientId由clientIp，instanceName和unitName决定，clientIp即客户端的 IP 地址；
+     * instanceName即实例名称，默认值为 DEFAULT，但在真正 clientConfig 的 getInstanceName 方法时如果实例名称为 DEFAULT，会自动将其替换为进程的 PID；
+     * unitName即单元名称，如果不为空，则会追加到 clientId 中。
+     * clientId示例：
+     * 172.16.15.117@4330
+     *
+     * @return
+     */
     //todo IP@instanceName@unitName如果相同。那么就会复用
     public String buildMQClientId() {
         StringBuilder sb = new StringBuilder();

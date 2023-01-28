@@ -43,9 +43,19 @@ public class MQClientManager {
     public MQClientInstance getOrCreateMQClientInstance(final ClientConfig clientConfig) {
         return getOrCreateMQClientInstance(clientConfig, null);
     }
-    //todo
+
+    /**
+     * todo
+     *MQClientManager提供了getOrCreateMQClientInstance方法用于根据clientConfig及rpcHook来创建MQClientInstance；
+     * 它使用factoryTable来存储clientId与MQClientInstance的映射关系，
+     * 只要clientId是一样的，获取的就是相同的MQClientInstance；而clientId则由clientConfig.buildMQClientId()计算出来
+     *
+     * @param clientConfig
+     * @param rpcHook
+     * @return
+     */
     public MQClientInstance getOrCreateMQClientInstance(final ClientConfig clientConfig, RPCHook rpcHook) {
-        //构建客户端ID
+        //gdtodo: 构建客户端ID clientId示例：172.16.15.117@4330
         String clientId = clientConfig.buildMQClientId();
         //根据客户端ID或者客户端实例
         MQClientInstance instance = this.factoryTable.get(clientId);

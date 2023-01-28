@@ -26,8 +26,13 @@ public class GetMessageResult {
     private final List<SelectMappedBufferResult> messageMapedList =
         new ArrayList<SelectMappedBufferResult>(100);
 
+    /**
+     * 该List内存储消息，每一条消息都被转成 ByteBuffer 表示了
+     */
     private final List<ByteBuffer> messageBufferList = new ArrayList<ByteBuffer>(100);
-
+    /**
+     * 查询结果状态  FOUND、NO_MATCHED_MESSAGE,MESSAGE_WAS_REMOVING,OFFSET_FOUND_NULL,OFFSET_OVERFLOW_BADLY......
+     */
     private GetMessageStatus status;
     private long nextBeginOffset;
     private long minOffset;
@@ -35,6 +40,9 @@ public class GetMessageResult {
 
     private int bufferTotalSize = 0;
 
+    /**
+     * 服务器建议客户端下次到该queue 拉消息时 使用 主/从 节点
+     */
     private boolean suggestPullingFromSlave = false;
 
     private int msgCount4Commercial = 0;

@@ -26,7 +26,7 @@ import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.common.consumer.ConsumeFromWhere;
 import org.apache.rocketmq.common.message.MessageExt;
 /**
- * @author 【享学课堂】 King老师
+ *
  * tag过滤-消费者
  */
 public class TagFilterConsumer {

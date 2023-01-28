@@ -201,7 +201,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                         null);
                 }
                 this.topicPublishInfoTable.put(this.defaultMQProducer.getCreateTopicKey(), new TopicPublishInfo());
-                //启动生产者
+                //启动生产者 --所有客户端组件都交由mQClientFactory启动
                 if (startFactory) {
                     //todo 最终还是调用MQClientInstance
                     mQClientFactory.start();
@@ -546,7 +546,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         }
 
     }
-    //todo sendDefaultImpl()是生产者消息发送的核心方法
+    //gdtodo sendDefaultImpl()是生产者消息发送的核心方法
     private SendResult sendDefaultImpl(
         Message msg,
         final CommunicationMode communicationMode,
@@ -567,13 +567,13 @@ public class DefaultMQProducerImpl implements MQProducerInner {
             MessageQueue mq = null;
             Exception exception = null;
             SendResult sendResult = null;
-            //重试次数
+            //重试次数 通过这里可以很明显看出 如果不是同步发送消息 那么消息重试只有1次
             int timesTotal = communicationMode == CommunicationMode.SYNC ? 1 + this.defaultMQProducer.getRetryTimesWhenSendFailed() : 1;
             int times = 0;
             String[] brokersSent = new String[timesTotal];
             for (; times < timesTotal; times++) {
                 String lastBrokerName = null == mq ? null : mq.getBrokerName();
-                //todo 生产者消息发送步骤三：选择队列
+                //todo 生产者消息发送步骤三：选择队列 即Producer根据发送者负载均衡策略，计算把消息发到哪个MessageQueue中
                 MessageQueue mqSelected = this.selectOneMessageQueue(topicPublishInfo, lastBrokerName);
                 if (mqSelected != null) {
                     mq = mqSelected;
@@ -585,6 +585,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                             msg.setTopic(this.defaultMQProducer.withNamespace(msg.getTopic()));
                         }
                         long costTime = beginTimestampPrev - beginTimestampFirst;
+                        // todo 前后时间对比 如果前后时间差 大于 设置的等待时间 那么直接跳出for循环了 这就说明连接超时是不进行多次连接重试的
                         if (timeout < costTime) {
                             callTimeout = true;
                             break;
@@ -674,6 +675,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
             info += FAQUrl.suggestTodo(FAQUrl.SEND_MSG_FAILED);
 
             MQClientException mqClientException = new MQClientException(info, exception);
+            // 如果超时直接报错
             if (callTimeout) {
                 throw new RemotingTooMuchRequestException("sendDefaultImpl call timeout");
             }

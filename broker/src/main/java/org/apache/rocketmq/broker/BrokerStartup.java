@@ -117,9 +117,11 @@ public class BrokerStartup {
 
             nettyClientConfig.setUseTLS(Boolean.parseBoolean(System.getProperty(TLS_ENABLE,
                 String.valueOf(TlsSystemConfig.tlsMode == TlsMode.ENFORCING))));
+            //Netty服务监听端口10911
             nettyServerConfig.setListenPort(10911);
+            // 存储相关的配置信息
             final MessageStoreConfig messageStoreConfig = new MessageStoreConfig();
-            //如果是从节点
+            //如果是从节点，Slave使用的消息常驻内存比例比Master低10%
             if (BrokerRole.SLAVE == messageStoreConfig.getBrokerRole()) {
                 int ratio = messageStoreConfig.getAccessMessageInMemoryMaxRatio() - 10;
                 messageStoreConfig.setAccessMessageInMemoryMaxRatio(ratio);
@@ -150,7 +152,7 @@ public class BrokerStartup {
                 System.out.printf("Please set the %s variable in your environment to match the location of the RocketMQ installation", MixAll.ROCKETMQ_HOME_ENV);
                 System.exit(-2);
             }
-            //获取nameSever地址
+            //获取nameSever地址   broker.conf文件中会有namesrvAddr=192.140.xxx等配置信息
             String namesrvAddr = brokerConfig.getNamesrvAddr();
             if (null != namesrvAddr) {
                 try {
@@ -165,7 +167,7 @@ public class BrokerStartup {
                     System.exit(-3);
                 }
             }
-            //主从设置
+            //主从设置  brokerId 0-表示masterId，Slave's brokerId must be > 0
             switch (messageStoreConfig.getBrokerRole()) {
                 case ASYNC_MASTER:
                 case SYNC_MASTER:
@@ -181,7 +183,7 @@ public class BrokerStartup {
                 default:
                     break;
             }
-            //是否选择 dleger技术
+            //是否选择 dleger技术  Dledger集群的所有Broker节点ID都是-1
             if (messageStoreConfig.isEnableDLegerCommitLog()) {
                 brokerConfig.setBrokerId(-1);
             }
@@ -220,15 +222,15 @@ public class BrokerStartup {
                 nettyServerConfig,
                 nettyClientConfig,
                 messageStoreConfig);
-            // remember all configs to prevent discard
+            // remember all configs to prevent discard （记住所有的配置以防止丢弃）
             controller.getConfiguration().registerConfig(properties);
-            //初始化
+            //todo 初始化 初始化BrokerController。注意从中理解Broker的组件结构
             boolean initResult = controller.initialize();
             if (!initResult) {
                 controller.shutdown();
                 System.exit(-3);
             }
-            //jvm关闭的勾子函数
+            //jvm关闭的勾子函数  优雅关闭，释放资源
             Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
                 private volatile boolean hasShutdown = false;
                 private AtomicInteger shutdownTimes = new AtomicInteger(0);

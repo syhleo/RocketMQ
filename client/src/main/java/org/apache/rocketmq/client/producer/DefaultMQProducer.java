@@ -107,6 +107,13 @@ public class DefaultMQProducer extends ClientConfig implements MQProducer {
     private int retryTimesWhenSendAsyncFailed = 2;
 
     /**
+     * https://github.com/apache/rocketmq/blob/master/docs/cn/client/java/API_Reference_DefaultMQProducer.md
+     * gdtodo: retryAnotherBrokerWhenNotStoreOK
+     * private boolean retryAnotherBrokerWhenNotStoreOK = false
+     * 同步模式下，消息保存失败时是否重试其他broker。
+     * 默认值：false
+     * 注意：此配置关闭时，非投递时产生异常情况下，会忽略retryTimesWhenSendFailed配置。
+     *
      * Indicate whether to retry another broker on sending failure internally.
      */
     private boolean retryAnotherBrokerWhenNotStoreOK = false;

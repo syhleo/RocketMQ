@@ -59,6 +59,7 @@ public class RemotingCommand {
     private static SerializeType serializeTypeConfigInThisServer = SerializeType.JSON;
 
     static {
+        // 获取配置的序列化方式
         final String protocol = System.getProperty(SERIALIZE_TYPE_PROPERTY, System.getenv(SERIALIZE_TYPE_ENV));
         if (!isBlank(protocol)) {
             try {
@@ -68,14 +69,29 @@ public class RemotingCommand {
             }
         }
     }
-
+    /**
+     * 处理请求消息时根据这个字段来走不同的消息处理类，响应时0成功，其他失败
+     * 请求类型
+     */
     private int code;
+    /**
+     * 双方实现语言
+     */
     private LanguageCode language = LanguageCode.JAVA;
+    // 请求方和应答方程序版本
     private int version = 0;
+    /**
+     * AtomicInteger每次加一，请求id,响应与请求相同
+     * 请求序号
+     */
     private int opaque = requestId.getAndIncrement();
+    // 标志位，判断是否oneway请求、是否是响应command 即标记请求是普通请求，还是无回应的请求
     private int flag = 0;
+    // 失败提示
     private String remark;
+    // 自定义字段
     private HashMap<String, String> extFields;
+    // 自定义头，不进行序列化
     private transient CommandCustomHeader customHeader;
 
     private SerializeType serializeTypeCurrentRPC = serializeTypeConfigInThisServer;
@@ -400,6 +416,10 @@ public class RemotingCommand {
         return encodeHeader(this.body != null ? this.body.length : 0);
     }
 
+    /**
+     * rocketmq官网设计文档
+     * https://github.com/apache/rocketmq/blob/master/docs/cn/design.md
+     */
     public ByteBuffer encodeHeader(final int bodyLength) {
         // 1> header length size
         int length = 4;

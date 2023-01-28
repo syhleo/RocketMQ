@@ -91,7 +91,7 @@ public class MQClientInstance {
     private final int instanceIndex;
     private final String clientId;
     private final long bootTimestamp = System.currentTimeMillis();
-    //todo RocketMQ客户端的缓存（包括生产者信息、消费者消息、路由表等等）
+    // gdtodo RocketMQ客户端的缓存（包括生产者信息、消费者消息、路由表等等）
     private final ConcurrentMap<String/* group */, MQProducerInner> producerTable = new ConcurrentHashMap<String, MQProducerInner>();
     private final ConcurrentMap<String/* group */, MQConsumerInner> consumerTable = new ConcurrentHashMap<String, MQConsumerInner>();
     private final ConcurrentMap<String/* group */, MQAdminExtInner> adminExtTable = new ConcurrentHashMap<String, MQAdminExtInner>();
@@ -230,7 +230,22 @@ public class MQClientInstance {
                 case CREATE_JUST:
                     this.serviceState = ServiceState.START_FAILED;
                     // If not specified,looking address from name server
+                    // 没有手动指定NameSrv的值，从远端服务器获取并更新本地缓存
                     if (null == this.clientConfig.getNamesrvAddr()) {
+                        /**
+                         * NameSrvAddr赋值有三种方式：
+                         * 1、通过setNamesrvAddr方法设置
+                         * 2、通过系统环境变量设置
+                         * 3、（通过fetchNameServerAddr()方法调用http接口去寻址，
+                         *    需配置hosts信息，客户端默认每隔两分钟去访问一次这个http地址，并更新本地nameSrvAddr地址。
+                         * 不配置系统属性rocketmq.namesrv.addr和环境变量NAMESRV_ADDR，让程序自动访问一个url从远端服务器拉取NameServer的地址，
+                         * 同时会开启相应的定时任务定时刷新NameServer地址。该url地址默认为http://jmenv.tbsite.net:8080/rocketmq/nsaddr，
+                         * 可以通过修改系统属性rocketmq.namesrv.domain和rocketmq.namesrv.domain.subgroup以达到修改url地址的目的。）
+                         * 只有上述第3种方式才可以实现程序运行过程中动态更新NameServer地址值。
+                         * 启动时查找NamesrvAddr的【优先级】:setNamesrvAddr()-->环境变量-->fetchNameServerAddr()
+                         * https://github.com/apache/rocketmq/blob/master/docs/cn/best_practice.md
+                         * 推荐使用第三种方式：使用HTTP静态服务器寻址方式，好处是客户端部署简单，且Name Server集群可以热升级。
+                         */
                         this.mQClientAPIImpl.fetchNameServerAddr();
                     }
                     // Start request-response channel
@@ -239,8 +254,10 @@ public class MQClientInstance {
                     //TODO 12.1 定时任务
                     this.startScheduledTask();
                     //TODO 12.2 开启拉消息服务（线程）
+                    // GDTODO: 入口：客户端实例 MQClientInstance 中有一个单独的线程 PullMessageService 来定时拉取消息。
                     this.pullMessageService.start();
                     //TODO 12.3 负载均衡服务（线程）
+                    // gdtodo: MQClientInstance 中有一个单独的 RebalanceService 线程来定时做负载
                     this.rebalanceService.start();
                     // Start push service
                     this.defaultMQProducer.getDefaultMQProducerImpl().start(false);
@@ -254,10 +271,20 @@ public class MQClientInstance {
             }
         }
     }
-     //todo 都是定时任务处理，也就是生产者或者消费者不是实时感知Broker的状态，而是会有一定的偏差
+
+
+    //todo 都是定时任务处理，也就是生产者或者消费者不是实时感知Broker的状态，而是会有一定的偏差
     // todo  所以如果服务器出现宕机，生产者或者消费要自行处理故障
+    /**
+     * 启动5个定时任务
+     * (1)若Namesrv不存在，则调用fetchNameServerAddr来获取,2min执行一次
+     * (2)定时更新Topic所对应的路由信息，默认轮训时间30s
+     * (3)定时清除离线的Broker，并向当前在线的Broker发送心跳包，默认间隔时间30s
+     * (4)定时持久化消费者队列的消费进度 每5s
+     * (5)定时调整消费者端的线程池的大小 每1分钟
+     */
     private void startScheduledTask() {
-        //2分钟一次获取路由地址
+        //2分钟一次获取路由地址 ，即 若Namesrv不存在，则调用fetchNameServerAddr来获取,2min执行一次
         if (null == this.clientConfig.getNamesrvAddr()) {
             this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
@@ -296,7 +323,7 @@ public class MQClientInstance {
                 }
             }
         }, 1000, this.clientConfig.getHeartbeatBrokerInterval(), TimeUnit.MILLISECONDS);
-        //todo 每5s种定时任务---这里持久化消费进度
+        //todo 每5s定时任务---这里持久化消费进度  initialDelay：（间隔多长时间开始执行第一次任务） 注意：scheduleAtFixedRate和scheduleWithFixedDelay的区别
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -308,7 +335,7 @@ public class MQClientInstance {
                 }
             }
         }, 1000 * 10, this.clientConfig.getPersistConsumerOffsetInterval(), TimeUnit.MILLISECONDS);
-
+        // 每1分钟定时调整消费者端的线程池的大小
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override

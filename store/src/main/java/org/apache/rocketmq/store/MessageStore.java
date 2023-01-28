@@ -95,12 +95,14 @@ public interface MessageStore {
      * Query at most <code>maxMsgNums</code> messages belonging to <code>topic</code> at <code>queueId</code> starting
      * from given <code>offset</code>. Resulting messages will further be screened using provided message filter.
      *
-     * @param group Consumer group that launches this query.
-     * @param topic Topic to query.
-     * @param queueId Queue ID to query.
-     * @param offset Logical offset to start from.
-     * @param maxMsgNums Maximum count of messages to query.
+     * @param group Consumer group that launches this query. 消费者组
+     * @param topic Topic to query. topic 主题
+     * @param queueId Queue ID to query. queueId
+     * @param offset Logical offset to start from. queueOffset
+     * @param maxMsgNums Maximum count of messages to query.  本次查询最多可拿的消息数量
      * @param messageFilter Message filter used to screen desired messages.
+     *                      messageFilter 上一步创建的消息过滤器（服务器这里，一般都是tagCode过滤..，
+     *                      getMessage方法通过consumerQueue拿到ConsumerQueueData，该对象有第三个字段tagCode，和messageFilter做个匹配，如果匹配到则去commitLog里拿到这条数据，如果匹配返回false，直接跳过这条消息，不再去commitLog里查询了）
      * @return Matched messages.
      */
     GetMessageResult getMessage(final String group, final String topic, final int queueId,

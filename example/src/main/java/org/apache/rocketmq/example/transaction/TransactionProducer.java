@@ -31,7 +31,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 /**
- * @author 【享学课堂】 King老师
+ *
  * A系统
  */
 public class TransactionProducer {

@@ -488,6 +488,7 @@ public class DefaultMessageStore implements MessageStore {
         }
 
         long beginTime = this.getSystemClock().now();
+        // gdtodo: commitLog.putMessage
         PutMessageResult result = this.commitLog.putMessage(msg);
         long elapsedTime = this.getSystemClock().now() - beginTime;
         if (elapsedTime > 500) {
@@ -1951,9 +1952,10 @@ public class DefaultMessageStore implements MessageStore {
                                 if (size > 0) {
                                     //todo  跳转到 CommitLogDispatcherBuildConsumeQueue.dispatch()方法
                                     DefaultMessageStore.this.doDispatch(dispatchRequest);
-
+                                    // gdtodo 长轮询相关 条件成立：当前broker是master节点并且允许长轮询
                                     if (BrokerRole.SLAVE != DefaultMessageStore.this.getMessageStoreConfig().getBrokerRole()
                                         && DefaultMessageStore.this.brokerConfig.isLongPollingEnable()) {
+                                        // 唤醒等待的PullRequest接收消息（有新消息来的时候就把新消息推送给消费端）
                                         DefaultMessageStore.this.messageArrivingListener.arriving(dispatchRequest.getTopic(),
                                             dispatchRequest.getQueueId(), dispatchRequest.getConsumeQueueOffset() + 1,
                                             dispatchRequest.getTagsCode(), dispatchRequest.getStoreTimestamp(),

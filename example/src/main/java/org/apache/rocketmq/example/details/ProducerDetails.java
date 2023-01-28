@@ -11,7 +11,7 @@ import org.apache.rocketmq.remoting.common.RemotingHelper;
 import java.util.List;
 
 /**
- * @author 【享学课堂】 King老师
+ *
  * 消息发送时的细节
  */
 public class ProducerDetails {

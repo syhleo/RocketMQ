@@ -141,18 +141,18 @@ public class PullAPIWrapper {
     }
 
     public PullResult pullKernelImpl(
-        final MessageQueue mq,
-        final String subExpression,
-        final String expressionType,
-        final long subVersion,
-        final long offset,
-        final int maxNums,
-        final int sysFlag,
-        final long commitOffset,
-        final long brokerSuspendMaxTimeMillis,
-        final long timeoutMillis,
-        final CommunicationMode communicationMode,
-        final PullCallback pullCallback
+        final MessageQueue mq, //消费队列
+        final String subExpression, //过滤表达式
+        final String expressionType, //表达式类型 TAG/SQL
+        final long subVersion, //过滤信息版本
+        final long offset, //拉取偏移量位置
+        final int maxNums, //最大拉取数量
+        final int sysFlag, //系统标识
+        final long commitOffset, //当前消费进度
+        final long brokerSuspendMaxTimeMillis, //broker默认挂起时间15s
+        final long timeoutMillis, //默认超时时间30s
+        final CommunicationMode communicationMode, //默认 异步
+        final PullCallback pullCallback //回调函数
     ) throws MQClientException, RemotingException, MQBrokerException, InterruptedException {
         FindBrokerResult findBrokerResult =
             this.mQClientFactory.findBrokerAddressInSubscribe(mq.getBrokerName(),

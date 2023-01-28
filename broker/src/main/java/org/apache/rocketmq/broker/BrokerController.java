@@ -232,7 +232,8 @@ public class BrokerController {
     }
 
     public boolean initialize() throws CloneNotSupportedException {
-        //todo 加载Broker中的主题信息  json
+        // 下面几行其实就是加载磁盘上的配置信息。
+        //todo  加载Broker中的主题信息  json
         boolean result = this.topicConfigManager.load();
         //todo 加载消费进度
         result = result && this.consumerOffsetManager.load();
@@ -240,7 +241,7 @@ public class BrokerController {
         result = result && this.subscriptionGroupManager.load();
         //todo 加载订消费者过滤信息
         result = result && this.consumerFilterManager.load();
-
+        //配置加载成功后，构建消息存储管理组件
         if (result) {
             try {
                 //创建消息存储管理组件
@@ -266,11 +267,13 @@ public class BrokerController {
 
         result = result && this.messageStore.load();
 
+        // Broker的Netty组件。注意，Broker即需要是Netty的服务端，又需要是Netty的客户端。
         if (result) {
-            //构建netty服务端
+            //构建netty服务端 Netty网络组件 监听端口：10911
             this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.clientHousekeepingService);
             NettyServerConfig fastConfig = (NettyServerConfig) this.nettyServerConfig.clone();
             fastConfig.setListenPort(nettyServerConfig.getListenPort() - 2);
+            //这个fastRemotingServer与RemotingServer功能基本差不多，处理VIP端口请求  它监听的端口是remotingServer监听端口-2 即10909
             this.fastRemotingServer = new NettyRemotingServer(fastConfig, this.clientHousekeepingService);
             //todo 这里构建出专门处理消息发送的线程池
             this.sendMessageExecutor = new BrokerFixedThreadPoolExecutor(
@@ -279,7 +282,7 @@ public class BrokerController {
                 1000 * 60,
                 TimeUnit.MILLISECONDS,
                 this.sendThreadPoolQueue,
-                new ThreadFactoryImpl("SendMessageThread_"));
+                new ThreadFactoryImpl("SendMessageThread_")); //线程工厂 ThreadFactoryImpl ，定义了线程名前缀：SendMessageThread_
             //pull消息的线程池
             this.pullMessageExecutor = new BrokerFixedThreadPoolExecutor(
                 this.brokerConfig.getPullMessageThreadPoolNums(),
@@ -336,7 +339,7 @@ public class BrokerController {
             this.consumerManageExecutor =
                 Executors.newFixedThreadPool(this.brokerConfig.getConsumerManageThreadPoolNums(), new ThreadFactoryImpl(
                     "ConsumerManageThread_"));
-            //注册各种处理消息请求
+            //todo 注册各种处理消息请求
             this.registerProcessor();
             //todo 各种后台定时任务--持久化配置文件
             final long initialDelay = UtilAll.computeNextMorningTimeMillis() - System.currentTimeMillis();
@@ -488,6 +491,7 @@ public class BrokerController {
                     log.warn("FileWatchService created error, can't load the certificate dynamically");
                 }
             }
+            //初始化相关业务场景组件。前两个加载用到了SPI机制加载服务，而用到SPI即代表可以自行扩展  ？？
             initialTransaction();
             initialAcl();
             initialRpcHooks();
@@ -876,11 +880,11 @@ public class BrokerController {
         if (this.fileWatchService != null) {
             this.fileWatchService.start();
         }
-        //todo 对外通信组件，例如给namesever发心跳
+        //todo 对外通信组件，例如给namesever发心跳 Broker的brokerOuterAPI可以理解为一个Netty客户端，往外发请求的组件。例如发送心跳
         if (this.brokerOuterAPI != null) {
             this.brokerOuterAPI.start();
         }
-
+        // 长轮询请求暂存服务
         if (this.pullRequestHoldService != null) {
             this.pullRequestHoldService.start();
         }

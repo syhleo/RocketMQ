@@ -55,6 +55,9 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
     public void load() {
     }
 
+    /**
+     * 更新消费进度到offsetTable
+     */
     @Override
     public void updateOffset(MessageQueue mq, long offset, boolean increaseOnly) {
         if (mq != null) {
@@ -65,8 +68,10 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
 
             if (null != offsetOld) {
                 if (increaseOnly) {
+                    //increaseOnly为true则会判断更新的值比老的值大才会进行更新
                     MixAll.compareAndIncreaseOnly(offsetOld, offset);
                 } else {
+                    //increaseOnly 为false则直接覆盖
                     offsetOld.set(offset);
                 }
             }
@@ -111,19 +116,25 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
         return -1;
     }
 
+
+    /**
+     * @param mqs mqs为需要持久化的队列集合
+     */
     @Override
     public void persistAll(Set<MessageQueue> mqs) {
         if (null == mqs || mqs.isEmpty())
             return;
 
         final HashSet<MessageQueue> unusedMQ = new HashSet<MessageQueue>();
-
+        // 遍历本地的消费进度
         for (Map.Entry<MessageQueue, AtomicLong> entry : this.offsetTable.entrySet()) {
             MessageQueue mq = entry.getKey();
             AtomicLong offset = entry.getValue();
             if (offset != null) {
+                // 如果该队列在需要持久化的队列中
                 if (mqs.contains(mq)) {
                     try {
+                        // gdtodo: 将消费进度发送到broker
                         this.updateConsumeOffsetToBroker(mq, offset.get());
                         log.info("[persistAll] Group: {} ClientId: {} updateConsumeOffsetToBroker {} {}",
                             this.groupName,
@@ -134,11 +145,12 @@ public class RemoteBrokerOffsetStore implements OffsetStore {
                         log.error("updateConsumeOffsetToBroker exception, " + mq.toString(), e);
                     }
                 } else {
+                    //废弃的消费进度
                     unusedMQ.add(mq);
                 }
             }
         }
-
+        // 如果有废弃的MQ，则将其消费进度废弃
         if (!unusedMQ.isEmpty()) {
             for (MessageQueue mq : unusedMQ) {
                 this.offsetTable.remove(mq);

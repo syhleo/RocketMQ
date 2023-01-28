@@ -84,6 +84,11 @@ public class MixAll {
     public static final String REPLY_MESSAGE_FLAG = "reply";
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.COMMON_LOGGER_NAME);
 
+    /**
+     * 该url地址默认为http://jmenv.tbsite.net:8080/rocketmq/nsaddr，
+     * 可以通过修改系统属性rocketmq.namesrv.domain和rocketmq.namesrv.domain.subgroup以达到修改url地址的目的。
+     * https://blog.csdn.net/carbuser_xl/article/details/126950784
+     */
     public static String getWSAddr() {
         String wsDomainName = System.getProperty("rocketmq.namesrv.domain", DEFAULT_NAMESRV_ADDR_LOOKUP);
         String wsDomainSubgroup = System.getProperty("rocketmq.namesrv.domain.subgroup", "nsaddr");

@@ -238,6 +238,9 @@ public class TopicConfigManager extends ConfigManager {
 
         boolean createNew = false;
 
+        /**
+         * gdtodo: ReentrantLock
+         */
         try {
             if (this.lockTopicConfigTable.tryLock(LOCK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
                 try {

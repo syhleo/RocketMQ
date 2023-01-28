@@ -23,7 +23,7 @@ import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.remoting.common.RemotingHelper;
 
 /**
- * @author 【享学课堂】 King老师
+ *
  * sql过滤 -消息生产者（加入消息属性)
  */
 

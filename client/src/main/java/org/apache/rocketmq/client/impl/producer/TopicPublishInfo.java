@@ -66,6 +66,7 @@ public class TopicPublishInfo {
     public void setHaveTopicRouterInfo(boolean haveTopicRouterInfo) {
         this.haveTopicRouterInfo = haveTopicRouterInfo;
     }
+
     //默认不启用Broker故障延迟机制
     public MessageQueue selectOneMessageQueue(final String lastBrokerName) {
         //todo lastBrokerName 是每次发送一条消息时保存的临时变量
@@ -80,7 +81,7 @@ public class TopicPublishInfo {
                 int pos = Math.abs(index) % this.messageQueueList.size();
                 if (pos < 0)
                     pos = 0;
-                //重试中，规避上次Broker队列
+                //重试中，规避上次Broker队列 即规避上次发送失败的Broker
                 MessageQueue mq = this.messageQueueList.get(pos);
                 if (!mq.getBrokerName().equals(lastBrokerName)) {
                     return mq;
@@ -90,7 +91,7 @@ public class TopicPublishInfo {
             return selectOneMessageQueue();
         }
     }
-    //todo 默认选择选择队列
+    //todo 默认选择队列
     public MessageQueue selectOneMessageQueue() {
         //todo sendWhichQueue自增(这里使用的 ThreadLocal)
         int index = this.sendWhichQueue.getAndIncrement();

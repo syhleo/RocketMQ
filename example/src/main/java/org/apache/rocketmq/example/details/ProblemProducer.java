@@ -7,7 +7,7 @@ import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.remoting.common.RemotingHelper;
 
 /**
- * @author 【享学课堂】 King老师
+ *
  * 复用MQClientInstance导致一个消费组不能创建多个
  */
 public class ProblemProducer {

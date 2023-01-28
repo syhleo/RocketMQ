@@ -27,13 +27,15 @@ import org.apache.rocketmq.client.producer.SendResult;
 import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.common.message.MessageQueue;
 /**
- * @author 【享学课堂】 King老师
+ *
  * 部分顺序消息生产
  */
 public class ProducerInOrder {
     public static void main(String[] args) throws Exception {
         DefaultMQProducer producer = new DefaultMQProducer("OrderProducer");
-        producer.setNamesrvAddr("106.55.246.66:9876");//106.55.246.66
+        producer.setNamesrvAddr("localhost:9876");//106.55.246.66
+        // 设置发送超时时限为30s，默认3s  (本地测试，设置为3s,5s都不行)
+        producer.setSendMsgTimeout(30000);
         producer.start();
 
         String[] tags = new String[]{"TagA", "TagC", "TagD"};

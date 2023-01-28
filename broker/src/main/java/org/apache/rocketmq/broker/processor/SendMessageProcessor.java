@@ -64,6 +64,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
     public SendMessageProcessor(final BrokerController brokerController) {
         super(brokerController);
     }
+
     //todo 收到请求的处理
     @Override
     public RemotingCommand processRequest(ChannelHandlerContext ctx,
@@ -87,6 +88,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         final SendMessageContext mqtraceContext;
         switch (request.getCode()) {
             case RequestCode.CONSUMER_SEND_MSG_BACK:
+                // 处理消费失败的重试消息
                 return this.asyncConsumerSendMsgBack(ctx, request);
             default:
                 SendMessageRequestHeader requestHeader = parseRequestHeader(request);
@@ -112,6 +114,18 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             this.brokerController.getMessageStore().isTransientStorePoolDeficient();
     }
 
+
+    /**
+     * 总结：
+     * 这里我们要注意到一个消息如果消费失败并且触发成功了SendMsgBack ，那么broker端将会对其的topic和queueid进行两次的变化！！！！！
+     * 第一次的变化是为了重试的逻辑，第二次的转变是为了延迟消费的逻辑。延迟消费的逻辑，统一将想要延迟消费的消息的topic和queueID塞进properties中，
+     * 然后将topic设为"SCHEDULE_TOPIC_XXXX" ，queueId设为根据DelayTimeLevel的等级从delayTimeLevel表中找到对应的队列。
+     *
+     * @param ctx
+     * @param request
+     * @return
+     * @throws RemotingCommandException
+     */
     private CompletableFuture<RemotingCommand> asyncConsumerSendMsgBack(ChannelHandlerContext ctx,
                                                                         RemotingCommand request) throws RemotingCommandException {
         final RemotingCommand response = RemotingCommand.createResponseCommand(null);
@@ -141,7 +155,11 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             response.setRemark(null);
             return CompletableFuture.completedFuture(response);
         }
-
+        // https://blog.csdn.net/yifouhu2947/article/details/88126916
+        /**
+         * gdtodo : 设置此条消息新的topic为%RETRY%+消费组的名称，并且选择新topic的队列（默认为0，默认情况下RetryQueueNums为1）
+         * 在broker进行设置此条消息新的topic为%RETRY%+消费组的名称
+         */
         String newTopic = MixAll.getRetryTopic(requestHeader.getGroup());
         int queueIdInt = Math.abs(this.random.nextInt() % 99999999) % subscriptionGroupConfig.getRetryQueueNums();
         int topicSysFlag = 0;
@@ -149,9 +167,19 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             topicSysFlag = TopicSysFlag.buildSysFlag(false, true);
         }
 
+        /**
+         * 为新topic创建topicConfig，实际上这步在client启动的时候和broker进行心跳的时候就已经创建好了。消费者client
+         * 会将自身订阅的subscription包装成心跳发送给broker，而subscription包含了名为(%RETRY%+消费组名称)的主题了，
+         * 这个方法在broker接收到心跳的时候也会触发
+         * retryTopic创建的时机:
+         * （1）consumer启动后会向broker发送heartbeat数据，如果broker中还没有对应的SubscriptionGroupConfig信息，会创建对应topic的retryTopic：org.apache.rocketmq.broker.processor.ClientManageProcessor#heartBeatbroker
+         * （2）broker在接收到consumer发送回来的消息的时候，【这里主要指的是：consumerSendMessageBack执行失败后，发送send方法】如果还没有创建retryTopic的topicConfig配置，则会新建：org.apache.rocketmq.broker.processor.AbstractSendMessageProcessor#msgCheck
+         * （3）broker在处理consumer发送回来的重试消息的时候会创建retryTopic：org.apache.rocketmq.broker.processor.SendMessageProcessor#asyncConsumerSendMsgBack
+         *
+         */
         TopicConfig topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageBackMethod(
             newTopic,
-            subscriptionGroupConfig.getRetryQueueNums(),
+            subscriptionGroupConfig.getRetryQueueNums(), // clientDefaultTopicQueueNums: 这里为1
             PermName.PERM_WRITE | PermName.PERM_READ, topicSysFlag);
         if (null == topicConfig) {
             response.setCode(ResponseCode.SYSTEM_ERROR);
@@ -164,6 +192,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             response.setRemark(String.format("the topic[%s] sending message is forbidden", newTopic));
             return CompletableFuture.completedFuture(response);
         }
+        // 通过物理偏移量找到消息体 ，这里broker会根据msg的commitLogOffset查询原始的消息里面的信息
         MessageExt msgExt = this.brokerController.getMessageStore().lookMessageByOffset(requestHeader.getOffset());
         if (null == msgExt) {
             response.setCode(ResponseCode.SYSTEM_ERROR);
@@ -171,12 +200,13 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
             return CompletableFuture.completedFuture(response);
         }
 
+        //gdtodo: 给原始消息新增属性，key为"RETRY_TOPIC"，value为原始消息的实际topic。这里很关键，和消费端消费消息时候的resetRetryTopic(msgs) 相呼应。
         final String retryTopic = msgExt.getProperty(MessageConst.PROPERTY_RETRY_TOPIC);
         if (null == retryTopic) {
             MessageAccessor.putProperty(msgExt, MessageConst.PROPERTY_RETRY_TOPIC, msgExt.getTopic());
         }
         msgExt.setWaitStoreMsgOK(false);
-
+        //得到消息的延迟级别，默认此时的值为0
         int delayLevel = requestHeader.getDelayLevel();
 
         int maxReconsumeTimes = subscriptionGroupConfig.getRetryMaxTimes();
@@ -186,11 +216,16 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
 
         if (msgExt.getReconsumeTimes() >= maxReconsumeTimes 
             || delayLevel < 0) {
+            /**
+             * 消息每消费失败一次都会增加ReconsumeTimes的值，当这个值达到了maxReconsumeTimes（默认为16），则将此消息送入死信队列。
+             * 且此死信队列不可读，也就说此消息在没有人工干预下再也不能发生消费了。
+             * 死信topic: "%DLQ%"+consumerGroup
+             */
             newTopic = MixAll.getDLQTopic(requestHeader.getGroup());
             queueIdInt = Math.abs(this.random.nextInt() % 99999999) % DLQ_NUMS_PER_GROUP;
 
             topicConfig = this.brokerController.getTopicConfigManager().createTopicInSendMessageBackMethod(newTopic,
-                    DLQ_NUMS_PER_GROUP,
+                    DLQ_NUMS_PER_GROUP, // clientDefaultTopicQueueNums: 这里为DLQ_NUMS_PER_GROUP 1
                     PermName.PERM_WRITE, 0);
             if (null == topicConfig) {
                 response.setCode(ResponseCode.SYSTEM_ERROR);
@@ -198,12 +233,14 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
                 return CompletableFuture.completedFuture(response);
             }
         } else {
+            //设置延迟级别为3，意味着此消息推迟10S进行消费。消息重复消费需要借助延迟消费的功能来实现的。
             if (0 == delayLevel) {
                 delayLevel = 3 + msgExt.getReconsumeTimes();
             }
             msgExt.setDelayTimeLevel(delayLevel);
         }
 
+        //创建一个新的消息，此消息的topic为newTopic，queueID为queueIdInt
         MessageExtBrokerInner msgInner = new MessageExtBrokerInner();
         msgInner.setTopic(newTopic);
         msgInner.setBody(msgExt.getBody());
@@ -217,10 +254,24 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         msgInner.setBornTimestamp(msgExt.getBornTimestamp());
         msgInner.setBornHost(msgExt.getBornHost());
         msgInner.setStoreHost(msgExt.getStoreHost());
+        // gdtodo: 在broker进行设置此条消息消费次数+1，reconsumeTimes
         msgInner.setReconsumeTimes(msgExt.getReconsumeTimes() + 1);
 
         String originMsgId = MessageAccessor.getOriginMessageId(msgExt);
         MessageAccessor.setOriginMessageId(msgInner, UtilAll.isBlank(originMsgId) ? msgExt.getMsgId() : originMsgId);
+        /**
+         * 将新创建的消息进行存储,存储的时候会有个逻辑判断，delayLevel大于0的情况下会将此消息的topic和queueID再进行一次转换（重要），将
+         * 此消息的newTopic，queueIdInt存入到属性中(real_topic,real_qid)，新的topic为 SCHEDULE_TOPIC_XXXX,新的queue为 根据delayLevel的等级去本地delayLevelMap
+         * 中找到对应的队列，实际上这里的步骤就是延迟消息的实现。到时候会有ScheduleMessageService会去做后续的逻辑处理。
+         * PutMessage执行完后Msg消息的结构为：
+         * topic:SCHEDULE_TOPIC_XXXX
+         * queueId: delayLevel - 1
+         * 如果是消息重试导致的消息，那msg的properties中存了以下信息：
+         * "REAL_TOPIC"：%RETRY%+消费组名称  比如：%RETRY%test_1201_mac
+         * "REAL_QID": msg.getQueueId()
+         * "RETRY_TOPIC": 原始消息的实际topic 比如：TopicTestMQS
+         * "DELAY"：delayLevel延迟级别 比如：3
+         */
         CompletableFuture<PutMessageResult> putMessageResult = this.brokerController.getMessageStore().asyncPutMessage(msgInner);
         return putMessageResult.thenApply((r) -> {
             if (r != null) {
@@ -673,7 +724,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         }
 
         response.setCode(-1);
-        //todo 检查队列的读写权限、自动创建Topic
+        //gdtodo 检查队列的读写权限、自动创建Topic
         super.msgCheck(ctx, requestHeader, response);
         if (response.getCode() != -1) {
             return response;

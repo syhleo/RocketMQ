@@ -12,14 +12,14 @@ import java.util.List;
 public class BalanceComuser {
     public static void main(String[] args) throws Exception {
         // 实例化消息生产者,指定组名
-        DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("mark");
+        DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("please_rename_unique_group_name_4");
         // 指定Namesrv地址信息.
-        consumer.setNamesrvAddr("106.55.246.66:9876");
+        consumer.setNamesrvAddr("159.75.208.56:9876");
         // 订阅Topic
-        consumer.setMaxReconsumeTimes(1);
+        //consumer.setMaxReconsumeTimes(1);
         consumer.subscribe("TopicTest", "*"); //tag  tagA|TagB|TagC
         //负载均衡模式消费
-        consumer.setMessageModel(MessageModel.CLUSTERING);
+        //consumer.setMessageModel(MessageModel.CLUSTERING);
         // 注册回调函数，处理消息
         consumer.registerMessageListener(new MessageListenerConcurrently() {
             @Override
@@ -33,6 +33,7 @@ public class BalanceComuser {
                         System.out.println("收到消息：" + " topic :" + topic + " ,tags : " + tags + " ,msg : " + msgBody);
                     }
                 } catch (Exception e) {
+                    System.out.println("异常信息。。。");
                     e.printStackTrace();
                     return ConsumeConcurrentlyStatus.RECONSUME_LATER;
 

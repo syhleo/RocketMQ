@@ -58,6 +58,7 @@ public class NamespaceUtil {
     }
 
     /**
+     *  字符串处理，去除掉namespace
      * If resource contains the namespace, unpack namespace from resource, just like:
      * (1) (MQ_INST_XX1%Topic_XXX1, MQ_INST_XX1) --> Topic_XXX1
      * (2) (MQ_INST_XX2%Topic_XXX2, NULL) --> MQ_INST_XX2%Topic_XXX2

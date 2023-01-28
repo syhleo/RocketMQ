@@ -16,7 +16,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
- * @author 【享学课堂】 King老师
+ *
  * 消息消费时的细节
  */
 public class ComuserDetails {
@@ -37,7 +37,7 @@ public class ComuserDetails {
         consumer.setConsumeThreadMax(20);
         //todo 推模式下任务间隔时间(推模式也是基于不断的轮训拉取的封装)
         consumer.setPullInterval(0);
-        //todo 推模式下任务拉取的条数,默认32条(一批批拉)
+        //gdtodo 推模式下任务拉取的条数,默认32条(一批批拉)
         consumer.setPullBatchSize(32);
         //todo 消息重试次数,-1代表16次 （超过 次数成为死信消息）
         consumer.setMaxReconsumeTimes(-1);

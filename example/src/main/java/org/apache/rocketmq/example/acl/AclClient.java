@@ -41,7 +41,7 @@ import org.apache.rocketmq.remoting.RPCHook;
 import org.apache.rocketmq.remoting.common.RemotingHelper;
 
 /**
- * @author 【享学课堂】 King老师
+ *
  * acl权限控制
  */
 public class AclClient {
