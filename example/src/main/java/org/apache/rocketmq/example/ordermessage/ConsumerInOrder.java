@@ -23,7 +23,7 @@ public class ConsumerInOrder {
          * 如果非第一次启动，那么按照上次消费的位置继续消费
          */
         consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_FIRST_OFFSET);
-        consumer.subscribe("PartOrder", "TagA || TagC || TagD");
+        consumer.subscribe("PartOrder", "*");
         consumer.registerMessageListener(new MessageListenerOrderly() {
             Random random = new Random();
             @Override

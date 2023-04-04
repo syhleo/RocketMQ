@@ -20,6 +20,7 @@ import org.apache.rocketmq.common.message.MessageQueue;
 
 /**
  * Consumer Orderly consumption context
+ * 顺序类消息上线文
  */
 public class ConsumeOrderlyContext {
     private final MessageQueue messageQueue;
@@ -46,6 +47,11 @@ public class ConsumeOrderlyContext {
         return suspendCurrentQueueTimeMillis;
     }
 
+    /**
+     * 可以控制顺序消息重试间隔，默认-1.submitConsumeRequestLater方法中可以用到，如果是默认值-1，则每次间隔时间为1秒
+     * submitConsumeRequestLater方法里面有逻辑控制，延迟范围【10，30000】毫秒，说明最大不会超过30s
+     * @param suspendCurrentQueueTimeMillis
+     */
     public void setSuspendCurrentQueueTimeMillis(long suspendCurrentQueueTimeMillis) {
         this.suspendCurrentQueueTimeMillis = suspendCurrentQueueTimeMillis;
     }

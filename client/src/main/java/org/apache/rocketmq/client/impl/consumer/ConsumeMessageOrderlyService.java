@@ -224,6 +224,10 @@ public class ConsumeMessageOrderlyService implements ConsumeMessageService {
         final boolean dispathToConsume) {
         if (dispathToConsume) {
             log.info("顺序消费，一次从broker拉取的消息数量: {}, messageQueue:{},消息体:{}",msgs.size(), messageQueue,msgs);
+            /**
+             * 顺序消费，一次从broker拉取的消息数量: 16, messageQueue:MessageQueue [topic=PartOrder, brokerName=broker-a, queueId=2],消息体:[MessageExt [brokerName=brokexxxxx
+             * 顺序消费，一次从broker拉取的消息数量: 12, messageQueue:MessageQueue [topic=PartOrder, brokerName=broker-a, queueId=1],消息体:[MessageExt [brokerName=brokexxxxx
+             */
             ConsumeRequest consumeRequest = new ConsumeRequest(processQueue, messageQueue);
             this.consumeExecutor.submit(consumeRequest);
         }

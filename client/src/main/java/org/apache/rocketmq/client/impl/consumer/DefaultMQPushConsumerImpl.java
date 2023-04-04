@@ -86,6 +86,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
     private long pullTimeDelayMillsWhenException = 3000;
     /**
      * Flow control interval 流控间隔
+     * 默认50ms
      */
     private static final long PULL_TIME_DELAY_MILLS_WHEN_FLOW_CONTROL = 50;
     /**
@@ -233,6 +234,13 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
             return;
         }
         // gdtodo: 消费者拉取消息控制压力源码
+        /*
+        消费者流控：
+        - 消费者本地缓存消息数超过pullThresholdForQueue时，默认1000。
+        - 消费者本地缓存消息大小超过pullThresholdSizeForQueue时，默认100MB。
+        - 消费者本地缓存消息跨度超过consumeConcurrentlyMaxSpan时，默认2000。
+        消费者流控的结果是降低拉取频率。
+         */
         long cachedMessageCount = processQueue.getMsgCount().get();
         long cachedMessageSizeInMiB = processQueue.getMsgSize().get() / (1024 * 1024);
 
@@ -241,7 +249,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
          * // 默认超过1000条进行流控
          */
         if (cachedMessageCount > this.defaultMQPushConsumer.getPullThresholdForQueue()) {
-            // 50ms后
+            // 50
             this.executePullRequestLater(pullRequest, PULL_TIME_DELAY_MILLS_WHEN_FLOW_CONTROL);
             if ((queueFlowControlTimes++ % 1000) == 0) {
                 log.warn(
@@ -267,6 +275,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
 
         if (!this.consumeOrderly) {
             // 非顺序消费
+            // 消费者本地缓存消息跨度超过consumeConcurrentlyMaxSpan时，默认2000。进行流控
             if (processQueue.getMaxSpan() > this.defaultMQPushConsumer.getConsumeConcurrentlyMaxSpan()) {
                 this.executePullRequestLater(pullRequest, PULL_TIME_DELAY_MILLS_WHEN_FLOW_CONTROL);
                 if ((queueMaxSpanFlowControlTimes++ % 1000) == 0) {

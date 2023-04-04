@@ -170,6 +170,15 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      */
     private long adjustThreadPoolNumsThreshold = 100000;
 
+
+    /**
+     * 消费者流控：
+     *  - 消费者本地缓存消息数超过pullThresholdForQueue时，默认1000。
+     *  - 消费者本地缓存消息大小超过pullThresholdSizeForQueue时，默认100MB。
+     *  - 消费者本地缓存消息跨度超过consumeConcurrentlyMaxSpan时，默认2000。
+     *  消费者流控的结果是降低拉取频率。
+     */
+
     /**
      * Concurrently max span offset.it has no effect on sequential consumption
      */
@@ -187,6 +196,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      *
      * <p>
      * The size of a message only measured by message body, so it's not accurate
+     * 100MB
      */
     private int pullThresholdSizeForQueue = 100;
 
